@@ -51,15 +51,10 @@ Try CryptoArb instantly!
 Watch a quick video walkthrough of CryptoArb:
 
 <div align="center">
-  <iframe
-    src="https://player.cloudinary.com/embed/?cloud_name=dnyrdbyes&public_id=CryptoApp_oljadf&profile=cld-default"
-    width="640"
-    height="360"
-    frameborder="0"
-    allow="autoplay; fullscreen"
-    allowfullscreen
-    title="CryptoArb Video Demo"
-  ></iframe>
+  <a href="https://player.cloudinary.com/embed/?cloud_name=dnyrdbyes&public_id=CryptoApp_oljadf&profile=cld-default" target="_blank">
+    <img src="https://res.cloudinary.com/dnyrdbyes/video/upload/c_thumb,w_640,h_360,g_auto/CryptoApp_oljadf.jpg" alt="CryptoArb Video Demo" width="640" height="360" />
+    <p><strong>👆 Click to watch the video demo</strong></p>
+  </a>
 </div>
 
 ---
