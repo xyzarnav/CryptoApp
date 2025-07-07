@@ -22,6 +22,7 @@ interface AuthContextType {
   toggleCurrency: () => void;
   convertCurrency: (amount: number) => number;
   formatCurrency: (amount: number) => string;
+  loading: boolean; // <-- add loading
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,15 +47,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return (savedCurrency as Currency) || 'INR';
   });
   const [exchangeRate, setExchangeRate] = useState<number>(75); // Default estimate until API fetch completes
+  const [loading, setLoading] = useState(true); // <-- add loading state
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
     if (token && userData) {
       setUser(JSON.parse(userData));
     }
-    
     // Fetch exchange rate on initial load
     fetchExchangeRate();
   }, []);
@@ -63,8 +63,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
-
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
         // Verify token and get user data
         const response = await fetch('http://localhost:5000/api/verify-token', {
@@ -76,15 +78,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
         } else {
           // If token is invalid, clear storage
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setUser(null);
         }
       } catch (error) {
         console.error('Error verifying token:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false); // <-- set loading false after check
       }
     };
 
@@ -205,7 +212,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         exchangeRate, 
         toggleCurrency, 
         convertCurrency, 
-        formatCurrency 
+        formatCurrency,
+        loading // <-- provide loading
       }}
     >
       {children}

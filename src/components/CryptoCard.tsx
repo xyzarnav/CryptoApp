@@ -1,25 +1,41 @@
-import React, { useState } from 'react';
-import { TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  ArrowUpCircle,
+  ArrowDownCircle,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface CryptoCardProps {
   symbol: string;
   name: string;
   price: number;
   change: number;
-  onTrade: (symbol: string, type: 'buy' | 'sell', amount: number, price: number) => void;
+  onTrade: (
+    symbol: string,
+    type: "buy" | "sell",
+    amount: number,
+    price: number
+  ) => void;
 }
 
-const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, onTrade }) => {
-  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
-  const [amount, setAmount] = useState('');
+const CryptoCard: React.FC<CryptoCardProps> = ({
+  symbol,
+  name,
+  price,
+  change,
+  onTrade,
+}) => {
+  const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
+  const [amount, setAmount] = useState("");
   const [showTradeForm, setShowTradeForm] = useState(false);
-  const { currency, exchangeRate, formatCurrency, convertCurrency } = useAuth();
+  const { formatCurrency } = useAuth();
 
   const handleTrade = () => {
     if (amount && parseFloat(amount) > 0) {
       onTrade(symbol, tradeType, parseFloat(amount), price);
-      setAmount('');
+      setAmount("");
       setShowTradeForm(false);
     }
   };
@@ -37,24 +53,38 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
           <div className="text-2xl font-bold text-white">
             {formatCurrency(price)}
           </div>
-          <div className={`flex items-center text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-            {isPositive ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+          <div
+            className={`flex items-center text-sm ${
+              isPositive ? "text-green-400" : "text-red-400"
+            }`}
+          >
+            {isPositive ? (
+              <TrendingUp className="h-4 w-4 mr-1" />
+            ) : (
+              <TrendingDown className="h-4 w-4 mr-1" />
+            )}
             {change.toFixed(2)}%
           </div>
         </div>
       </div>
-      
+
       {!showTradeForm ? (
         <div className="flex space-x-2">
           <button
-            onClick={() => { setTradeType('buy'); setShowTradeForm(true); }}
+            onClick={() => {
+              setTradeType("buy");
+              setShowTradeForm(true);
+            }}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center space-x-2 transition-colors"
           >
             <ArrowUpCircle className="h-4 w-4" />
             <span>Buy</span>
           </button>
           <button
-            onClick={() => { setTradeType('sell'); setShowTradeForm(true); }}
+            onClick={() => {
+              setTradeType("sell");
+              setShowTradeForm(true);
+            }}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md flex items-center justify-center space-x-2 transition-colors"
           >
             <ArrowDownCircle className="h-4 w-4" />
@@ -65,21 +95,21 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
         <div className="space-y-3">
           <div className="flex space-x-2">
             <button
-              onClick={() => setTradeType('buy')}
+              onClick={() => setTradeType("buy")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                tradeType === 'buy' 
-                  ? 'bg-green-600 text-white' 
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                tradeType === "buy"
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
               }`}
             >
               Buy
             </button>
             <button
-              onClick={() => setTradeType('sell')}
+              onClick={() => setTradeType("sell")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                tradeType === 'sell' 
-                  ? 'bg-red-600 text-white' 
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                tradeType === "sell"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
               }`}
             >
               Sell
@@ -99,12 +129,12 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
             <button
               onClick={handleTrade}
               className={`flex-1 py-2 px-4 rounded-md text-white font-medium ${
-                tradeType === 'buy' 
-                  ? 'bg-green-600 hover:bg-green-700' 
-                  : 'bg-red-600 hover:bg-red-700'
+                tradeType === "buy"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-red-600 hover:bg-red-700"
               }`}
             >
-              {tradeType === 'buy' ? 'Buy' : 'Sell'}
+              {tradeType === "buy" ? "Buy" : "Sell"}
             </button>
             <button
               onClick={() => setShowTradeForm(false)}

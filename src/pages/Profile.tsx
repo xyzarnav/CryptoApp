@@ -44,7 +44,7 @@ interface ProfileData {
 }
 
 const Profile: React.FC = () => {
-  const { user, updateBalance, currency, toggleCurrency, formatCurrency, convertCurrency } = useAuth();
+  const { user, updateBalance, currency, toggleCurrency, formatCurrency } = useAuth();
   const { prices } = useSocket();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
