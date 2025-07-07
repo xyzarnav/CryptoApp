@@ -141,6 +141,7 @@ const LandingPage: React.FC = () => {
   const [loadingChart, setLoadingChart] = useState(true);
   const [currency, setCurrency] = useState<"USD" | "INR">("USD");
   const [exchangeRate, setExchangeRate] = useState<number>(1);
+  const [lastDirection, setLastDirection] = useState<"up" | "down" | null>(null);
 
   // Section refs for smooth scroll navigation
   const heroRef = useRef<HTMLDivElement>(null);
@@ -160,7 +161,7 @@ const LandingPage: React.FC = () => {
     ref.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Fetch INR exchange rate
+  // Fetch INR exchange rate (keep this)
   useEffect(() => {
     axios
       .get(exchangeRateApiUrl)
@@ -171,55 +172,80 @@ const LandingPage: React.FC = () => {
       .catch((error) => console.error("Error fetching exchange rate:", error));
   }, []);
 
-  // Fetch actual Ethereum price history from backend API
+  // --- IMPROVED MOCK CHART DATA GENERATION ---
   useEffect(() => {
-    setLoadingChart(true);
-    axios
-      .get(ethApiUrl)
-      .then((res) => {
-        const history: EthHistoryPoint[] = res.data.history || [];
-        let data: ChartPoint[] = [];
-        if (period === "1D") {
-          // Last 24 points (simulate hourly)
-          data = history.slice(-24).map((h) => ({
-            time:
-              new Date(h.timestamp).getHours().toString().padStart(2, "0") +
-              ":00",
-            eth: h.price,
-          }));
-        } else if (period === "1W") {
-          // Group by day (last 7 days)
-          const grouped: { [day: string]: { sum: number; count: number } } = {};
-          history.forEach((h) => {
-            const d = new Date(h.timestamp);
-            const day = d.toLocaleDateString(undefined, { weekday: "short" });
-            if (!grouped[day]) grouped[day] = { sum: 0, count: 0 };
-            grouped[day].sum += h.price;
-            grouped[day].count += 1;
-          });
-          data = Object.entries(grouped).map(([day, val]) => ({
-            time: day,
-            eth: val.sum / val.count,
-          }));
-        } else if (period === "1M") {
-          // Group by week (last 4 weeks)
-          const byWeek: { [week: string]: { sum: number; count: number } } = {};
-          history.forEach((h) => {
-            const d = new Date(h.timestamp);
-            const week = `Week ${Math.ceil(d.getDate() / 7)}`;
-            if (!byWeek[week]) byWeek[week] = { sum: 0, count: 0 };
-            byWeek[week].sum += h.price;
-            byWeek[week].count += 1;
-          });
-          data = Object.entries(byWeek).map(([week, val]) => ({
-            time: week,
-            eth: val.sum / val.count,
-          }));
+    const basePrice = 2850 + Math.random() * 300; // Start around typical ETH price
+    const points = 50; // More data points for smoother look
+    const trendBias = Math.random() > 0.5 ? 1 : -1; // Overall trend direction
+    const volatility = 0.002; // Base volatility
+    
+    const generateInitialData = () => {
+      const data: ChartPoint[] = [];
+      let currentPrice = basePrice;
+      let momentum = 0;
+      
+      for (let i = 0; i < points; i++) {
+        // Add momentum and mean reversion
+        momentum = momentum * 0.95 + (Math.random() - 0.5) * volatility * basePrice;
+        // Add trend bias
+        const trend = (trendBias * i / points) * (volatility * basePrice * 2);
+        // Calculate new price with momentum and trend
+        currentPrice = currentPrice + momentum + trend;
+        
+        // Ensure price stays within realistic bounds
+        currentPrice = Math.max(currentPrice, basePrice * 0.85);
+        currentPrice = Math.min(currentPrice, basePrice * 1.15);
+
+        const time = new Date(Date.now() - (points - i) * 30000)
+          .getHours()
+          .toString()
+          .padStart(2, "0") + ":00";
+
+        data.push({ time, eth: currentPrice });
+      }
+      return data;
+    };
+
+    setEthChartData(generateInitialData());
+    setLoadingChart(false);
+
+    // Animate with more realistic price movements
+    const interval = setInterval(() => {
+      setEthChartData((oldData) => {
+        if (oldData.length === 0) return oldData;
+        
+        const lastPrice = oldData[oldData.length - 1].eth;
+        const time = new Date()
+          .getHours()
+          .toString()
+          .padStart(2, "0") + ":00";
+
+        // More realistic price movement calculation
+        const volatilityFactor = Math.random() * volatility * lastPrice;
+        const trendFactor = trendBias * volatility * lastPrice * 0.5;
+        const momentumFactor = (lastPrice - oldData[oldData.length - 2]?.eth || 0) * 0.3;
+        
+        let newPrice = lastPrice + volatilityFactor + trendFactor + momentumFactor;
+        
+        // Add occasional price spikes
+        if (Math.random() < 0.1) { // 10% chance of spike
+          newPrice += (Math.random() - 0.5) * volatility * lastPrice * 5;
         }
-        setEthChartData(data);
-      })
-      .finally(() => setLoadingChart(false));
-  }, [period]);
+
+        // Keep price within realistic bounds
+        newPrice = Math.max(newPrice, basePrice * 0.85);
+        newPrice = Math.min(newPrice, basePrice * 1.15);
+
+        setLastDirection(newPrice > lastPrice ? "up" : "down");
+
+        const newData = [...oldData.slice(1), { time, eth: newPrice }];
+        return newData;
+      });
+    }, 1500); // Slightly faster updates for more active appearance
+
+    return () => clearInterval(interval);
+  }, []);
+  // --- END MOCK CHART DATA GENERATION ---
 
   // Fade-in for arbitrage section
   const arbitrageFade = useScrollFadeIn();
@@ -338,36 +364,7 @@ const LandingPage: React.FC = () => {
               Ethereum Price Chart ({currency})
             </h2>
             <div className="flex justify-center gap-2">
-              {/* <button
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                  period === "1D"
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-                onClick={() => setPeriod("1D")}
-              >
-                1 Day
-              </button> */}
-              {/* <button
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                  period === "1W"
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-                onClick={() => setPeriod("1W")}
-              >
-                1 Week
-              </button> */}
-              {/* <button
-                className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors ${
-                  period === "1M"
-                    ? "bg-blue-600 text-white shadow"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-                onClick={() => setPeriod("1M")}
-              >
-                1 Month
-              </button> */}
+              {/* Timeframe buttons removed for mock */}
             </div>
           </div>
           <div className="w-full h-64 sm:h-80 flex items-center justify-center">
@@ -381,16 +378,30 @@ const LandingPage: React.FC = () => {
                 >
                   <defs>
                     <linearGradient
-                      id="ethGradient"
+                      id="ethGradientGreen"
                       x1="0"
                       y1="0"
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.8} />
+                      <stop offset="0%" stopColor="#10B981" stopOpacity={0.8} />
                       <stop
                         offset="100%"
-                        stopColor="#3B82F6"
+                        stopColor="#10B981"
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                    <linearGradient
+                      id="ethGradientRed"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor="#EF4444" stopOpacity={0.8} />
+                      <stop
+                        offset="100%"
+                        stopColor="#EF4444"
                         stopOpacity={0.1}
                       />
                     </linearGradient>
@@ -402,23 +413,36 @@ const LandingPage: React.FC = () => {
                     fontSize={13}
                     tickLine={false}
                     axisLine={false}
+                    minTickGap={20}
                   />
                   <YAxis
                     stroke="#9CA3AF"
                     fontSize={13}
                     tickLine={false}
                     axisLine={false}
-                    domain={["auto", "auto"]}
+                    domain={[
+                      (dataMin: number) => Math.floor(dataMin * 0.97),
+                      (dataMax: number) => Math.ceil(dataMax * 1.03),
+                    ]}
                     width={60}
+                    tickFormatter={(v) =>
+                      currency === "INR"
+                        ? `₹${(v * exchangeRate).toFixed(0)}`
+                        : `$${v.toFixed(0)}`
+                    }
                   />
                   <Tooltip
                     contentStyle={{
                       background: "#1e293b",
-                      border: "1px solid #3B82F6",
+                      border: lastDirection === "up"
+                        ? "1px solid #10B981"
+                        : "1px solid #EF4444",
                       borderRadius: 10,
                       color: "#fff",
                     }}
-                    labelStyle={{ color: "#60a5fa" }}
+                    labelStyle={{
+                      color: lastDirection === "up" ? "#10B981" : "#EF4444",
+                    }}
                     formatter={(value: number) => {
                       const convertedValue =
                         currency === "INR" ? value * exchangeRate : value;
@@ -433,23 +457,23 @@ const LandingPage: React.FC = () => {
                   <Line
                     type="monotone"
                     dataKey="eth"
-                    stroke="#3B82F6"
+                    stroke={lastDirection === "down" ? "#EF4444" : "#10B981"}
                     strokeWidth={3}
-                    dot={{
-                      r: 5,
-                      stroke: "#fff",
-                      strokeWidth: 2,
-                      fill: "#3B82F6",
-                    }}
+                    dot={false}
                     activeDot={{
                       r: 7,
-                      stroke: "#3B82F6",
+                      stroke: lastDirection === "down" ? "#EF4444" : "#10B981",
                       strokeWidth: 3,
                       fill: "#fff",
                     }}
                     name="Ethereum"
-                    fill="url(#ethGradient)"
+                    fill={`url(#${
+                      lastDirection === "down"
+                        ? "ethGradientRed"
+                        : "ethGradientGreen"
+                    })`}
                     isAnimationActive={true}
+                    animationDuration={800}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -596,3 +620,4 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
+

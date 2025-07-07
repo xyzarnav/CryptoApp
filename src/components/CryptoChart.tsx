@@ -33,21 +33,17 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
   onTimeframeChange,
 }) => {
   const { formatCurrency } = useAuth();
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1H");
+  const [selectedTimeframe, setSelectedTimeframe] = useState("1D");
   const [showVolume, setShowVolume] = useState(false);
   const [chartData, setChartData] = useState<
     Array<{ time: string; price: number; volume: number }>
   >([]);
 
+  // Only 3 timeframes: 1D, 1M, 1Y
   const timeframes = [
-    { id: "5M", label: "5M", points: 30 },
-    { id: "15M", label: "15M", points: 40 },
-    { id: "1H", label: "1H", points: 60 },
-    { id: "4H", label: "4H", points: 48 },
-    { id: "1D", label: "1D", points: 24 },
-    { id: "1W", label: "1W", points: 168 },
-    { id: "1M", label: "1M", points: 30 },
-    { id: "1Y", label: "1Y", points: 52 }, // Weekly points for a year
+    { id: "1D", label: "1D", points: 24 },   // 24 hours
+    { id: "1M", label: "1M", points: 30 },   // 30 days
+    { id: "1Y", label: "1Y", points: 52 },   // 52 weeks
   ];
 
   useEffect(() => {
@@ -61,7 +57,6 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
     const now = Date.now();
     const data = [];
 
-    // Generate realistic price data based on current price and timeframe
     const basePrice = price;
     const volatility = getVolatilityForTimeframe(selectedTimeframe);
 
@@ -73,9 +68,8 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
       );
       const timestamp = now - timeAgo;
 
-      // Generate price with some randomness but trending toward current price
       const randomFactor = (Math.random() - 0.5) * volatility;
-      const trendFactor = (i / timeframe.points) * 0.1; // Slight trend toward current price
+      const trendFactor = (i / timeframe.points) * 0.1;
       const pointPrice = basePrice * (1 + randomFactor + trendFactor);
 
       data.push({
@@ -85,7 +79,6 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
       });
     }
 
-    // Ensure the last point is close to the current price
     if (data.length > 0) {
       data[data.length - 1].price = basePrice;
     }
@@ -93,102 +86,56 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
     setChartData(data);
   };
 
+  // Only keep volatility for 1D, 1M, 1Y
   const getVolatilityForTimeframe = (timeframe: string): number => {
     const volatilityMap: { [key: string]: number } = {
-      "5M": 0.02,
-      "15M": 0.03,
-      "1H": 0.05,
-      "4H": 0.08,
       "1D": 0.12,
-      "5D": 0.15,
       "1M": 0.25,
-      "6M": 0.4,
       "1Y": 0.6,
-      MAX: 0.8,
     };
     return volatilityMap[timeframe] || 0.05;
   };
 
+  // Only keep time multipliers for 1D, 1M, 1Y
   const getTimeAgoForPoint = (
     timeframe: string,
     index: number,
     totalPoints: number
   ): number => {
     const timeMultipliers: { [key: string]: number } = {
-      "5M": 5 * 60 * 1000,
-      "15M": 15 * 60 * 1000,
-      "1H": 60 * 60 * 1000,
-      "4H": 4 * 60 * 60 * 1000,
-      "1D": 24 * 60 * 60 * 1000,
-      "5D": (5 * 24 * 60 * 60 * 1000) / totalPoints,
-      "1M": (30 * 24 * 60 * 60 * 1000) / totalPoints,
-      "6M": (6 * 30 * 24 * 60 * 60 * 1000) / totalPoints,
-      "1Y": (365 * 24 * 60 * 60 * 1000) / totalPoints,
-      MAX: (3 * 365 * 24 * 60 * 60 * 1000) / totalPoints,
+      "1D": (24 * 60 * 60 * 1000) / totalPoints, // 1 day in ms divided by points (hourly)
+      "1M": (30 * 24 * 60 * 60 * 1000) / totalPoints, // 1 month in ms divided by points (daily)
+      "1Y": (365 * 24 * 60 * 60 * 1000) / totalPoints, // 1 year in ms divided by points (weekly)
     };
-
     const multiplier = timeMultipliers[timeframe] || 60 * 60 * 1000;
     return (totalPoints - index) * multiplier;
   };
 
-  // Add function to calculate X-axis interval
+  // X-axis interval for 3 timeframes
   const getXAxisInterval = (timeframe: string): number => {
     const intervalMap: { [key: string]: number } = {
-      "5M": 4,
-      "15M": 5,
-      "1H": 6,
-      "4H": 6,
       "1D": 3,
-      "1W": 24,
       "1M": 5,
       "1Y": 6,
     };
-    return intervalMap[timeframe] || 4;
+    return intervalMap[timeframe] || 3;
   };
 
+  // Format time for 3 timeframes
   const formatTimeForTimeframe = (
     timestamp: number,
     timeframe: string
   ): string => {
     const date = new Date(timestamp);
-
     switch (timeframe) {
-      case "5M":
-      case "15M":
-        return date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        });
-      case "1H":
-      case "4H":
-        return date.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        });
       case "1D":
-        return date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
-      case "1W":
-        return date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        return date.getHours().toString().padStart(2, "0") + ":00";
       case "1M":
-        return date.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        });
+        return `${date.getDate()}/${date.getMonth() + 1}`;
       case "1Y":
-        return date.toLocaleDateString("en-US", {
-          month: "short",
-          year: "2-digit",
-        });
+        return `${date.getMonth() + 1}/${date.getFullYear().toString().slice(-2)}`;
       default:
-        return date.toLocaleTimeString();
+        return "";
     }
   };
 
@@ -312,12 +259,6 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
               angle={selectedTimeframe === "1Y" ? -45 : 0}
               textAnchor={selectedTimeframe === "1Y" ? "end" : "middle"}
               height={50}
-              tickFormatter={(time) => {
-                if (selectedTimeframe === "1Y") {
-                  return time.split(" ")[0]; // Show only month
-                }
-                return time;
-              }}
             />
             <YAxis
               stroke="#9CA3AF"
@@ -390,3 +331,5 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
 };
 
 export default CryptoChart;
+              
+         

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import Navbar from "../components/Navbar";
@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
-  const { user, updateBalance, currency, toggleCurrency, formatCurrency } = useAuth();
+  const { user, updateBalance, currency, toggleCurrency, formatCurrency } =
+    useAuth();
   const { prices, priceHistory, isConnected } = useSocket();
   const [selectedCrypto, setSelectedCrypto] = useState("ethereum");
   const [tradeAmount, setTradeAmount] = useState("");
@@ -24,6 +25,7 @@ const Dashboard: React.FC = () => {
   const [showMiniChart, setShowMiniChart] = useState<string | null>(null);
   const [showAllCoins, setShowAllCoins] = useState(false); // State to toggle visibility
   const [showAllMarkets, setShowAllMarkets] = useState(false); // State to toggle visibility in All Markets section
+  const [loading, setLoading] = useState(true);
 
   const cryptos = [
     { symbol: "bitcoin", name: "Bitcoin", shortName: "BTC" },
@@ -99,6 +101,14 @@ const Dashboard: React.FC = () => {
   const handleMiniChartClose = () => {
     setShowMiniChart(null);
   };
+
+  useEffect(() => {
+    if (prices && priceHistory) {
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+  }, [prices, priceHistory]);
 
   // Add a helper to determine how many coins to show based on screen size
   const getVisibleCount = () => {
@@ -187,16 +197,26 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Main Chart */}
           <div className="lg:col-span-2">
-            {selectedPrice && (
-              <CryptoChart
-                symbol={selectedCrypto}
-                name={selectedCryptoData?.name || ""}
-                price={selectedPrice.usd}
-                change={selectedPrice.usd_24h_change}
-                volume={selectedPrice.usd_24h_vol}
-                marketCap={selectedPrice.usd_market_cap}
-                history={selectedHistory}
-              />
+            {loading ? (
+              <div className="bg-gray-800 rounded-lg p-4 sm:p-6 border border-gray-700">
+                <h3 className="text-lg font-bold text-white mb-4">
+                  Loading Chart...
+                </h3>
+                <div className="animate-pulse bg-gray-700 h-64 rounded-md"></div>
+              </div>
+            ) : (
+              selectedPrice && (
+                <CryptoChart
+                  symbol={selectedCrypto}
+                  name={selectedCryptoData?.name || ""}
+                  price={selectedPrice.usd}
+                  change={selectedPrice.usd_24h_change}
+                  volume={selectedPrice.usd_24h_vol}
+                  marketCap={selectedPrice.usd_market_cap}
+                  history={selectedHistory}
+                  /* Remove unsupported props that cause TypeScript errors */
+                />
+              )
             )}
           </div>
 
@@ -398,7 +418,7 @@ const Dashboard: React.FC = () => {
               );
             })}
           </div>
-         
+
           {/* Expand/Collapse Button for All Markets (mobile only) */}
           <div className="block sm:hidden mt-4">
             {cryptos.length > 5 && (
@@ -438,3 +458,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

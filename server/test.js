@@ -8,8 +8,9 @@ import { Server as SocketIo } from "socket.io";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import axios from "axios";
-
+import dotenv from "dotenv";
 const app = express();
+dotenv.config();
 const server = http.createServer(app);
 const io = new SocketIo(server, {
   cors: {
@@ -17,18 +18,34 @@ const io = new SocketIo(server, {
     methods: ["GET", "POST"],
   },
 });
+console.log(process.env.MONGO_URI);
+
+// const io = new SocketIo(server, {
+//   cors: {
+//     origin: [
+//       "http://localhost:5173",
+//       "https://686b88a2d9eff38d628ec9d9--arnavcryptoapp.netlify.app",
+//     ],
+//     methods: ["GET", "POST"],
+//   },
+// });
 
 // Middleware
 app.use(helmet());
 app.use(cors());
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173",
+//       "https://686b88a2d9eff38d628ec9d9--arnavcryptoapp.netlify.app",
+//     ],
+//   })
+// );
 app.use(morgan("combined"));
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect(
-  "mongodb+srv://wazir:hello12@cluster0.d66d3n3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-
-);
+mongoose.connect(process.env.MONGO_URI);
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -105,7 +122,9 @@ const ArbitrageSchema = new mongoose.Schema({
 const Arbitrage = mongoose.model("Arbitrage", ArbitrageSchema);
 
 // JWT Secret
-const JWT_SECRET = "your-secret-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
+console.log(JWT_SECRET);
+
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -118,7 +137,7 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      if (err.name === 'TokenExpiredError') {
+      if (err.name === "TokenExpiredError") {
         return res.status(401).json({ error: "Token expired" });
       }
       return res.status(403).json({ error: "Invalid token" });
@@ -131,6 +150,11 @@ const authenticateToken = (req, res, next) => {
 // Crypto prices cache
 let cryptoPrices = {};
 let priceHistory = {};
+let lastFetchSuccess = true;
+let lastSuccessfulFetch = Date.now();
+let retryCount = 0;
+const maxRetries = 5;
+const initialBackoffDelay = 5000; // 5 seconds
 
 // Initialize price history for charts
 const initializePriceHistory = () => {
@@ -153,13 +177,41 @@ const initializePriceHistory = () => {
 
 initializePriceHistory();
 
-// Fetch crypto prices from CoinGecko
+// Fetch crypto prices from CoinGecko with retry logic
 const fetchCryptoPrices = async () => {
   try {
+    // If we've had too many failures, increase delay between requests
+    const shouldFetch =
+      lastFetchSuccess || Date.now() - lastSuccessfulFetch > getBackoffDelay();
+
+    if (!shouldFetch) {
+      console.log("Skipping fetch due to backoff strategy");
+      return;
+    }
+
+    console.log("Fetching crypto prices...");
     const response = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
+      "https://api.coingecko.com/api/v3/simple/price",
+      {
+        params: {
+          ids: "bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon",
+          vs_currencies: "usd",
+          include_24hr_change: true,
+          include_24hr_vol: true,
+          include_market_cap: true,
+        },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        timeout: 10000, // 10 second timeout
+      }
     );
+
     cryptoPrices = response.data;
+    lastFetchSuccess = true;
+    lastSuccessfulFetch = Date.now();
+    retryCount = 0; // Reset retry count on success
 
     // Store price history for charts
     const timestamp = Date.now();
@@ -181,12 +233,42 @@ const fetchCryptoPrices = async () => {
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
   } catch (error) {
-    console.error("Error fetching crypto prices:", error);
+    lastFetchSuccess = false;
+    retryCount++;
+
+    // Log specific error for rate limiting
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers["retry-after"] || 60;
+      console.error(
+        `Rate limited by CoinGecko API. Retry after ${retryAfter} seconds.`
+      );
+    } else {
+      console.error("Error fetching crypto prices:", error.message);
+    }
+
+    // If we still have cached data, continue serving it
+    if (Object.keys(cryptoPrices).length > 0) {
+      io.emit("priceUpdate", {
+        prices: cryptoPrices,
+        history: priceHistory,
+        cached: true,
+        lastUpdated: lastSuccessfulFetch,
+      });
+    }
   }
 };
 
-// Fetch prices every 60 seconds to avoid rate limiting
-setInterval(fetchCryptoPrices, 60000);
+// Calculate exponential backoff delay
+function getBackoffDelay() {
+  if (retryCount === 0) return 0;
+  // Exponential backoff: 5s, 10s, 20s, 40s, 80s, etc.
+  return initialBackoffDelay * Math.pow(2, Math.min(retryCount - 1, 6));
+}
+
+// Fetch prices at a reduced frequency (every 2 minutes)
+// This reduces chances of hitting rate limits
+const fetchInterval = 120000; // 2 minutes
+setInterval(fetchCryptoPrices, fetchInterval);
 fetchCryptoPrices(); // Initial fetch
 
 // Routes
@@ -249,7 +331,7 @@ app.post("/api/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id },
       JWT_SECRET,
-      { expiresIn: '7d' } // Token expires in 7 days
+      { expiresIn: "7d" } // Token expires in 7 days
     );
 
     res.json({
@@ -454,11 +536,9 @@ app.post("/api/arbitrage", authenticateToken, async (req, res) => {
       status: "active",
     });
     if (existingArbitrage) {
-      return res
-        .status(400)
-        .json({
-          error: "You can only have one active arbitrage strategy at a time",
-        });
+      return res.status(400).json({
+        error: "You can only have one active arbitrage strategy at a time",
+      });
     }
 
     const user = await User.findById(req.user.userId);
@@ -522,7 +602,12 @@ app.get("/api/leaderboard", async (req, res) => {
 });
 
 app.get("/api/prices", (req, res) => {
-  res.json({ prices: cryptoPrices, history: priceHistory });
+  res.json({
+    prices: cryptoPrices,
+    history: priceHistory,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch,
+  });
 });
 
 app.get("/api/prices/:symbol", (req, res) => {
@@ -534,7 +619,12 @@ app.get("/api/prices/:symbol", (req, res) => {
     return res.status(404).json({ error: "Symbol not found" });
   }
 
-  res.json({ price, history });
+  res.json({
+    price,
+    history,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch,
+  });
 });
 
 // Add new verify token endpoint
@@ -544,14 +634,14 @@ app.get("/api/verify-token", authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    
+
     res.json({
       user: {
         id: user._id,
         username: user.username,
         email: user.email,
         balance: user.balance,
-      }
+      },
     });
   } catch (error) {
     res.status(500).json({ error: "Error verifying token" });
@@ -639,14 +729,19 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // Send current prices and history to newly connected client
-  socket.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
+  socket.emit("priceUpdate", {
+    prices: cryptoPrices,
+    history: priceHistory,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch,
+  });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
