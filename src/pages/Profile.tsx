@@ -379,7 +379,7 @@ const Profile: React.FC = () => {
           </div>
 
           {/* Recent Trades */}
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-10 pb-5">
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-5 pb-2">
             <h2 className="text-xl font-bold text-white mb-4">Recent Trades</h2>
             <div className="space-y-4">
               {profileData.trades.length === 0 ? (
