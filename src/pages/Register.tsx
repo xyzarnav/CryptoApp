@@ -26,10 +26,18 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
+    // Password validation: 8+ chars, 1 uppercase, 1 special symbol
+    const passwordRequirements = [
+      { regex: /^.{8,}$/, message: 'Password must be at least 8 characters long' },
+      { regex: /[A-Z]/, message: 'Password must contain at least one uppercase letter' },
+      { regex: /[^A-Za-z0-9]/, message: 'Password must contain at least one special symbol' },
+    ];
+    for (const req of passwordRequirements) {
+      if (!req.regex.test(password)) {
+        setError(req.message);
+        setLoading(false);
+        return;
+      }
     }
 
     try {
