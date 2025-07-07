@@ -139,6 +139,11 @@ const authenticateToken = (req, res, next) => {
 // Crypto prices cache
 let cryptoPrices = {};
 let priceHistory = {};
+let lastFetchSuccess = true;
+let lastSuccessfulFetch = Date.now();
+let retryCount = 0;
+const maxRetries = 5;
+const initialBackoffDelay = 5000; // 5 seconds
 
 // Initialize price history for charts
 const initializePriceHistory = () => {
@@ -161,13 +166,41 @@ const initializePriceHistory = () => {
 
 initializePriceHistory();
 
-// Fetch crypto prices from CoinGecko
+// Fetch crypto prices from CoinGecko with retry logic
 const fetchCryptoPrices = async () => {
   try {
+    // If we've had too many failures, increase delay between requests
+    const shouldFetch = lastFetchSuccess || 
+      (Date.now() - lastSuccessfulFetch > getBackoffDelay());
+    
+    if (!shouldFetch) {
+      console.log("Skipping fetch due to backoff strategy");
+      return;
+    }
+    
+    console.log("Fetching crypto prices...");
     const response = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
+      "https://api.coingecko.com/api/v3/simple/price",
+      {
+        params: {
+          ids: "bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon",
+          vs_currencies: "usd",
+          include_24hr_change: true,
+          include_24hr_vol: true,
+          include_market_cap: true
+        },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000 // 10 second timeout
+      }
     );
+    
     cryptoPrices = response.data;
+    lastFetchSuccess = true;
+    lastSuccessfulFetch = Date.now();
+    retryCount = 0; // Reset retry count on success
 
     // Store price history for charts
     const timestamp = Date.now();
@@ -189,12 +222,40 @@ const fetchCryptoPrices = async () => {
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
   } catch (error) {
-    console.error("Error fetching crypto prices:", error);
+    lastFetchSuccess = false;
+    retryCount++;
+    
+    // Log specific error for rate limiting
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || 60;
+      console.error(`Rate limited by CoinGecko API. Retry after ${retryAfter} seconds.`);
+    } else {
+      console.error("Error fetching crypto prices:", error.message);
+    }
+    
+    // If we still have cached data, continue serving it
+    if (Object.keys(cryptoPrices).length > 0) {
+      io.emit("priceUpdate", { 
+        prices: cryptoPrices, 
+        history: priceHistory,
+        cached: true,
+        lastUpdated: lastSuccessfulFetch
+      });
+    }
   }
 };
 
-// Fetch prices every 60 seconds to avoid rate limiting
-setInterval(fetchCryptoPrices, 60000);
+// Calculate exponential backoff delay
+function getBackoffDelay() {
+  if (retryCount === 0) return 0;
+  // Exponential backoff: 5s, 10s, 20s, 40s, 80s, etc.
+  return initialBackoffDelay * Math.pow(2, Math.min(retryCount - 1, 6)); 
+}
+
+// Fetch prices at a reduced frequency (every 2 minutes)
+// This reduces chances of hitting rate limits
+const fetchInterval = 120000; // 2 minutes
+setInterval(fetchCryptoPrices, fetchInterval);
 fetchCryptoPrices(); // Initial fetch
 
 // Routes
@@ -530,7 +591,12 @@ app.get("/api/leaderboard", async (req, res) => {
 });
 
 app.get("/api/prices", (req, res) => {
-  res.json({ prices: cryptoPrices, history: priceHistory });
+  res.json({ 
+    prices: cryptoPrices, 
+    history: priceHistory,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch
+  });
 });
 
 app.get("/api/prices/:symbol", (req, res) => {
@@ -542,7 +608,12 @@ app.get("/api/prices/:symbol", (req, res) => {
     return res.status(404).json({ error: "Symbol not found" });
   }
 
-  res.json({ price, history });
+  res.json({ 
+    price, 
+    history,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch
+  });
 });
 
 // Add new verify token endpoint
@@ -647,7 +718,12 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // Send current prices and history to newly connected client
-  socket.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
+  socket.emit("priceUpdate", { 
+    prices: cryptoPrices, 
+    history: priceHistory,
+    cached: !lastFetchSuccess,
+    lastUpdated: lastSuccessfulFetch
+  });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
