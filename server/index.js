@@ -8,31 +8,35 @@ import { Server as SocketIo } from "socket.io";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import axios from "axios";
-
+import dotenv from "dotenv";
 const app = express();
+dotenv.config();
 const server = http.createServer(app);
 const io = new SocketIo(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://686b88a2d9eff38d628ec9d9--arnavcryptoapp.netlify.app",
+    ],
     methods: ["GET", "POST"],
   },
 });
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://686b88a2d9eff38d628ec9d9--arnavcryptoapp.netlify.app",
+    ],
+  })
+);
 app.use(morgan("combined"));
 app.use(express.json());
 
 // MongoDB connection
-mongoose.connect(
-  "mongodb+srv://wazir:hello12@cluster0.d66d3n3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 30000,
-  }
-);
+mongoose.connect(process.env.MONGO_URI);
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -109,7 +113,7 @@ const ArbitrageSchema = new mongoose.Schema({
 const Arbitrage = mongoose.model("Arbitrage", ArbitrageSchema);
 
 // JWT Secret
-const JWT_SECRET = "your-secret-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -650,7 +654,7 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

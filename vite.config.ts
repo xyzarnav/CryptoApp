@@ -9,6 +9,6 @@ export default defineConfig({
   },
   server: {
     host: true, // Allows access from your local network
-    port: 5173, // Default port for Vite
+    port: 4173, // Default port for Vite
   },
 });
