@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CryptoCardProps {
   symbol: string;
@@ -13,6 +14,7 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [showTradeForm, setShowTradeForm] = useState(false);
+  const { currency, exchangeRate, formatCurrency, convertCurrency } = useAuth();
 
   const handleTrade = () => {
     if (amount && parseFloat(amount) > 0) {
@@ -32,7 +34,9 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
           <p className="text-gray-400 text-sm uppercase">{symbol}</p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-white">${price.toFixed(2)}</div>
+          <div className="text-2xl font-bold text-white">
+            {formatCurrency(price)}
+          </div>
           <div className={`flex items-center text-sm ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
             {isPositive ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
             {change.toFixed(2)}%
@@ -89,7 +93,7 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ symbol, name, price, change, on
             className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:border-blue-500 focus:outline-none"
           />
           <div className="text-sm text-gray-400">
-            Total: ${(parseFloat(amount) * price || 0).toFixed(2)}
+            Total: {formatCurrency((parseFloat(amount) || 0) * price)}
           </div>
           <div className="flex space-x-2">
             <button

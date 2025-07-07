@@ -391,7 +391,7 @@ const Dashboard: React.FC = () => {
                   key={crypto.symbol}
                   symbol={crypto.symbol}
                   name={crypto.name}
-                  price={priceData.usd}
+                  price={priceData.usd} // Pass as number, not formatted string
                   change={priceData.usd_24h_change}
                   onTrade={handleTrade}
                 />
