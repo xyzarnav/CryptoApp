@@ -41,7 +41,7 @@ CryptoArb is built to be accessible for all ages, including kids and absolute be
 ## Demo
 
 Try CryptoArb instantly!  
-**Live Demo:** [https://arnavcryptoapp.netlify.app](https://cryptoarb-demo.example.com)  
+**Live Demo:** [https://arnavcryptoapp.netlify.app](https://arnavcryptoapp.netlify.app)  
 *(If running locally, see instructions below.)*
 
 ---
