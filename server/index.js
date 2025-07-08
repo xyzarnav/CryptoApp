@@ -190,12 +190,17 @@ const fetchCryptoPrices = async () => {
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
   } catch (error) {
-    console.error("Error fetching crypto prices:", error);
+    if (error.response && error.response.status === 429) {
+      console.warn("CoinGecko rate limit hit. Backing off...");
+      // Optionally, wait longer before next call
+    } else {
+      console.error("Error fetching crypto prices:", error);
+    }
   }
 };
 
 // Fetch prices every 60 seconds to avoid rate limiting
-setInterval(fetchCryptoPrices, 60000);
+setInterval(fetchCryptoPrices, 180000);
 fetchCryptoPrices(); // Initial fetch
 
 // Routes
