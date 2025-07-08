@@ -187,7 +187,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-gray-700 rounded-lg p-3">
-          <p className="text-gray-400 text-xs">24h Volume</p>
+          {/* <p className="text-gray-400 text-xs">24h Volume</p> */}
           <p className="text-white font-semibold text-sm">
             {formatVolume(volume || 0)}
           </p>
@@ -238,7 +238,7 @@ const CryptoChart: React.FC<CryptoChartProps> = ({
           }`}
         >
           <BarChart3 className="h-3 w-3" />
-          <span>Volume</span>
+          {/* <span>Volume</span> */}
         </button>
       </div>
 
