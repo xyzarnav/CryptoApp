@@ -51,7 +51,7 @@ function useScrollFadeIn() {
   return ref;
 }
 
-const ethApiUrl = "http://localhost:5000/api/prices/ethereum";
+const ethApiUrl = "https://cryptoapp-4ftm.onrender.com/api/prices/ethereum";
 const exchangeRateApiUrl = "https://api.exchangerate-api.com/v4/latest/USD";
 
 // Define the botStrategies array with proper types

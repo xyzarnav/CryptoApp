@@ -103,11 +103,14 @@ const Arbitrage: React.FC = () => {
   const fetchArbitrages = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        "https://cryptoapp-4ftm.onrender.com/api/profile",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -175,17 +178,20 @@ const Arbitrage: React.FC = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/arbitrage", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          strategy: strategy.name,
-          amount,
-        }),
-      });
+      const response = await fetch(
+        "https://cryptoapp-4ftm.onrender.com/api/arbitrage",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            strategy: strategy.name,
+            amount,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -218,7 +224,7 @@ const Arbitrage: React.FC = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:5000/api/arbitrage/${arbitrageId}/stop`,
+        `https://cryptoapp-4ftm.onrender.com/api/arbitrage/${arbitrageId}/stop`,
         {
           method: "POST",
           headers: {

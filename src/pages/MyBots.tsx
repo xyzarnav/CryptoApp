@@ -77,7 +77,7 @@ const MyBots: React.FC = () => {
   const fetchBots = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/bots", {
+      const response = await fetch("https://cryptoapp-4ftm.onrender.com/api/bots", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -113,7 +113,7 @@ const MyBots: React.FC = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/bots", {
+      const response = await fetch("https://cryptoapp-4ftm.onrender.com/api/bots", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -148,7 +148,7 @@ const MyBots: React.FC = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:5000/api/bots/${botId}/stop`,
+        `https://cryptoapp-4ftm.onrender.com/api/bots/${botId}/stop`,
         {
           method: "POST",
           headers: {

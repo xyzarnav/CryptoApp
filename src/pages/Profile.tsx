@@ -75,7 +75,7 @@ const Profile: React.FC = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/profile", {
+      const response = await fetch("https://cryptoapp-4ftm.onrender.com/api/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -118,7 +118,7 @@ const Profile: React.FC = () => {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/trade", {
+      const response = await fetch("https://cryptoapp-4ftm.onrender.com/api/trade", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

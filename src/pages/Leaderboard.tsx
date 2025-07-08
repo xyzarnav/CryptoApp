@@ -18,7 +18,9 @@ const Leaderboard: React.FC = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/leaderboard');
+        const response = await fetch(
+          "https://cryptoapp-4ftm.onrender.com/api/leaderboard"
+        );
         if (response.ok) {
           const data = await response.json();
           setUsers(data);

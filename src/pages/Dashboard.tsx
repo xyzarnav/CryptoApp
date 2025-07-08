@@ -52,14 +52,17 @@ const Dashboard: React.FC = () => {
   ) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/trade", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ symbol, type, amount, price }),
-      });
+      const response = await fetch(
+        "https://cryptoapp-4ftm.onrender.com/api/trade",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ symbol, type, amount, price }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
