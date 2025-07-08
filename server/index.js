@@ -175,27 +175,33 @@ const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes cache
 // Replace your fetchCryptoPrices function with this version
 const fetchCryptoPrices = async () => {
   try {
-    // Check cache first
     const now = Date.now();
+
+    // Serve cached data if within cache duration
     if (cachedPrices && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
-      console.log('Serving cached prices, age:', Math.round((now - cacheTimestamp)/1000), 'seconds');
+      console.log('Serving cached prices, age:', Math.round((now - cacheTimestamp) / 1000), 'seconds');
+      io.emit("priceUpdate", { prices: cachedPrices, history: priceHistory });
       return;
     }
 
-    // Reset counter if more than a minute has passed
+    // Reset API call count if more than a minute has passed
     if (now - lastResetTime > 60000) {
       console.log(`API calls in last minute: ${apiCallCount}`);
       apiCallCount = 0;
       lastResetTime = now;
     }
 
-    // Check if we're approaching rate limit
+    // Check if rate limit is approaching
     if (apiCallCount >= MAX_CALLS_PER_MINUTE) {
       console.warn(`Rate limit approaching (${apiCallCount} calls) - Using cache`);
-      fetchInterval = 600000; // 10 minutes
+      fetchInterval = Math.min(fetchInterval + 300000, 900000); // Increase interval up to 15 minutes
+      if (cachedPrices) {
+        io.emit("priceUpdate", { prices: cachedPrices, history: priceHistory });
+      }
       return;
     }
 
+    // Fetch prices from CoinGecko API
     const response = await axios.get(
       "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
     );
@@ -207,8 +213,8 @@ const fetchCryptoPrices = async () => {
     cryptoPrices = response.data;
     cachedPrices = response.data;
     cacheTimestamp = now;
-    
-    // Store price history for charts
+
+    // Update price history for charts
     const timestamp = now;
     Object.keys(cryptoPrices).forEach((crypto) => {
       if (priceHistory[crypto]) {
@@ -225,19 +231,18 @@ const fetchCryptoPrices = async () => {
       }
     });
 
-    // Reset interval on success
-    fetchInterval = 300000; // 5 minutes
+    // Reset interval on successful fetch
+    fetchInterval = 300000; // Reset to 5 minutes
 
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
   } catch (error) {
     if (error.response && error.response.status === 429) {
       console.warn(`CoinGecko rate limit hit. Calls made: ${apiCallCount}`);
-      fetchInterval = 600000; // 10 minutes on rate limit
-      // Use cached data if available
+      fetchInterval = Math.min(fetchInterval + 300000, 900000); // Increase interval up to 15 minutes
       if (cachedPrices) {
-        cryptoPrices = cachedPrices;
         console.log('Using cached prices due to rate limit');
+        io.emit("priceUpdate", { prices: cachedPrices, history: priceHistory });
       }
     } else {
       console.error("Error fetching crypto prices:", error);
