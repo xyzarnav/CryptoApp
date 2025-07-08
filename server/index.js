@@ -11,23 +11,32 @@ import axios from "axios";
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://arnavcryptoapp.netlify.app",
+];
 const io = new SocketIo(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
 app.use(morgan("combined"));
 app.use(express.json());
 
 // MongoDB connection
 mongoose.connect(
-  "mongodb+srv://wazir:hello12@cluster0.d66d3n3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-
+  "mongodb+srv://wazir:hello12@cluster0.d66d3n3.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 );
 
 // User Schema
@@ -118,7 +127,7 @@ const authenticateToken = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      if (err.name === 'TokenExpiredError') {
+      if (err.name === "TokenExpiredError") {
         return res.status(401).json({ error: "Token expired" });
       }
       return res.status(403).json({ error: "Invalid token" });
@@ -249,7 +258,7 @@ app.post("/api/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id },
       JWT_SECRET,
-      { expiresIn: '7d' } // Token expires in 7 days
+      { expiresIn: "7d" } // Token expires in 7 days
     );
 
     res.json({
@@ -454,11 +463,9 @@ app.post("/api/arbitrage", authenticateToken, async (req, res) => {
       status: "active",
     });
     if (existingArbitrage) {
-      return res
-        .status(400)
-        .json({
-          error: "You can only have one active arbitrage strategy at a time",
-        });
+      return res.status(400).json({
+        error: "You can only have one active arbitrage strategy at a time",
+      });
     }
 
     const user = await User.findById(req.user.userId);
@@ -544,14 +551,14 @@ app.get("/api/verify-token", authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    
+
     res.json({
       user: {
         id: user._id,
         username: user.username,
         email: user.email,
         balance: user.balance,
-      }
+      },
     });
   } catch (error) {
     res.status(500).json({ error: "Error verifying token" });
