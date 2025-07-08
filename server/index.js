@@ -165,6 +165,7 @@ initializePriceHistory();
 // Fetch crypto prices from CoinGecko
 let fetchInterval = 300000; // 5 minutes
 let fetchTimeout;
+
 const fetchCryptoPrices = async () => {
   try {
     const response = await axios.get(
@@ -188,27 +189,28 @@ const fetchCryptoPrices = async () => {
         }
       }
     });
-    fetchInterval = 300000;
+
+    // Reset interval on success
+    fetchInterval = 300000; // 5 minutes
 
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
   } catch (error) {
     if (error.response && error.response.status === 429) {
       console.warn("CoinGecko rate limit hit. Backing off...");
-      // Optionally, wait longer before next call
-      fetchInterval = 600000;
+      fetchInterval = 600000; // 10 minutes on rate limit
     } else {
       console.error("Error fetching crypto prices:", error);
     }
-  } {
+  } finally {
+    // Schedule next fetch
     clearTimeout(fetchTimeout);
     fetchTimeout = setTimeout(fetchCryptoPrices, fetchInterval);
   }
 };
 
-// Fetch prices every 60 seconds to avoid rate limiting
-// setInterval(fetchCryptoPrices, 300000);
-fetchCryptoPrices(); // Initial fetch
+// Start initial fetch
+fetchCryptoPrices();
 
 // Routes
 app.post("/api/register", async (req, res) => {
