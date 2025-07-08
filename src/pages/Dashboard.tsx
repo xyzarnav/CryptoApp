@@ -142,6 +142,10 @@ const Dashboard: React.FC = () => {
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
                 Trading Dashboard
               </h1>
+              <p className="text-sm text-red-400">
+                Note: Prices may not reflect real-time values due to free-tier
+                limitations.
+              </p>
               <p className="text-gray-300">Welcome back, {user?.username}!</p>
             </div>
             <div className="flex items-center space-x-4 mt-4 sm:mt-0">
