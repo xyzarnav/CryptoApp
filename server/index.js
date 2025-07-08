@@ -163,13 +163,15 @@ const initializePriceHistory = () => {
 initializePriceHistory();
 
 // Fetch crypto prices from CoinGecko
+let fetchInterval = 300000; // 5 minutes
+let fetchTimeout;
 const fetchCryptoPrices = async () => {
   try {
     const response = await axios.get(
       "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,chainlink,litecoin,bitcoin-cash,stellar,dogecoin,polygon&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
     );
     cryptoPrices = response.data;
-
+    
     // Store price history for charts
     const timestamp = Date.now();
     Object.keys(cryptoPrices).forEach((crypto) => {
@@ -186,6 +188,7 @@ const fetchCryptoPrices = async () => {
         }
       }
     });
+    fetchInterval = 300000;
 
     // Emit prices to all connected clients
     io.emit("priceUpdate", { prices: cryptoPrices, history: priceHistory });
@@ -193,14 +196,18 @@ const fetchCryptoPrices = async () => {
     if (error.response && error.response.status === 429) {
       console.warn("CoinGecko rate limit hit. Backing off...");
       // Optionally, wait longer before next call
+      fetchInterval = 600000;
     } else {
       console.error("Error fetching crypto prices:", error);
     }
+  } {
+    clearTimeout(fetchTimeout);
+    fetchTimeout = setTimeout(fetchCryptoPrices, fetchInterval);
   }
 };
 
 // Fetch prices every 60 seconds to avoid rate limiting
-setInterval(fetchCryptoPrices, 180000);
+// setInterval(fetchCryptoPrices, 300000);
 fetchCryptoPrices(); // Initial fetch
 
 // Routes
