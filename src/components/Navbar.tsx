@@ -20,8 +20,8 @@ const Navbar: React.FC = () => {
 
   const navigationItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
-    { path: "/my-bots", label: "My Bots", icon: Bot },
-    { path: "/arbitrage", label: "Arbitrage", icon: TrendingUp },
+    // { path: "/my-bots", label: "My Bots", icon: Bot },
+    // { path: "/arbitrage", label: "Arbitrage", icon: TrendingUp },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { path: "/profile", label: "Profile", icon: User },
   ];
